@@ -1,0 +1,116 @@
+Sure! Here's the entire process summarized in one cell:
+
+```python
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+from scipy.cluster.hierarchy import dendrogram, linkage
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.cluster import DBSCAN
+
+# Load the dataset
+df = pd.read_csv('Mall_Customers.csv')
+
+# Ensure all entries in the text column are strings and fill NaN values with an empty string
+df['text'] = df['text'].astype(str).fillna('')
+
+# Text cleaning function
+def clean_text(text):
+    text = re.sub(r'\W', ' ', text)
+    text = re.sub(r'\s+', ' ', text)
+    text = text.lower()
+    text = ' '.join([word for word in text.split() if word not in stopwords.words('english')])
+    return text
+
+# Clean the data
+df['cleaned_text'] = df['text'].apply(clean_text)
+
+# Select relevant features
+features = df[['Age', 'Annual Income (k$)', 'Spending Score (1-100)']]
+
+# Scale the features for better clustering results
+scaler = StandardScaler()
+scaled_features = scaler.fit_transform(features)
+
+# Determine the optimal number of clusters using the Elbow Method
+wcss = []
+for i in range(1, 11):
+    kmeans = KMeans(n_clusters=i, init='k-means++', max_iter=300, n_init=10, random_state=42)
+    kmeans.fit(scaled_features)
+    wcss.append(kmeans.inertia_)
+
+# Plot the Elbow Method graph
+plt.figure(figsize=(10, 5))
+plt.plot(range(1, 11), wcss)
+plt.title('Elbow Method')
+plt.xlabel('Number of clusters')
+plt.ylabel('WCSS')
+plt.show()
+
+# Apply K-Means with the optimal number of clusters
+optimal_clusters = 5  # Example value, choose based on the Elbow Method graph
+kmeans = KMeans(n_clusters=optimal_clusters, init='k-means++', max_iter=300, n_init=10, random_state=42)
+kmeans.fit(scaled_features)
+df['Cluster'] = kmeans.labels_
+
+# Create the linkage matrix for Hierarchical Clustering
+Z = linkage(scaled_features, method='ward')
+
+# Plot the dendrogram
+plt.figure(figsize=(10, 7))
+dendrogram(Z)
+plt.title('Dendrogram')
+plt.xlabel('Customers')
+plt.ylabel('Euclidean distances')
+plt.show()
+
+# Apply Agglomerative Clustering
+hc = AgglomerativeClustering(n_clusters=optimal_clusters, affinity='euclidean', linkage='ward')
+df['HC_Cluster'] = hc.fit_predict(scaled_features)
+
+# Apply DBSCAN
+dbscan = DBSCAN(eps=0.5, min_samples=5)
+df['DBSCAN_Cluster'] = dbscan.fit_predict(scaled_features)
+
+# Scatter plot for K-Means Clustering
+plt.figure(figsize=(10, 7))
+sns.scatterplot(x='Annual Income (k$)', y='Spending Score (1-100)', hue='Cluster', data=df, palette='viridis')
+plt.title('Customer Segments (K-Means Clustering)')
+plt.xlabel('Annual Income (k$)')
+plt.ylabel('Spending Score (1-100)')
+plt.legend()
+plt.show()
+
+# Scatter plot for Hierarchical Clustering
+plt.figure(figsize=(10, 7))
+sns.scatterplot(x='Annual Income (k$)', y='Spending Score (1-100)', hue='HC_Cluster', data=df, palette='viridis')
+plt.title('Customer Segments (Hierarchical Clustering)')
+plt.xlabel('Annual Income (k$)')
+plt.ylabel('Spending Score (1-100)')
+plt.legend()
+plt.show()
+
+# Scatter plot for DBSCAN Clustering
+plt.figure(figsize=(10, 7))
+sns.scatterplot(x='Annual Income (k$)', y='Spending Score (1-100)', hue='DBSCAN_Cluster', data=df, palette='viridis')
+plt.title('Customer Segments (DBSCAN Clustering)')
+plt.xlabel('Annual Income (k$)')
+plt.ylabel('Spending Score (1-100)')
+plt.legend()
+plt.show()
+
+# Group by clusters and calculate mean values for interpretation
+kmeans_clusters = df.groupby('Cluster').mean()
+hc_clusters = df.groupby('HC_Cluster').mean()
+dbscan_clusters = df.groupby('DBSCAN_Cluster').mean()
+
+print("K-Means Clusters:\n", kmeans_clusters)
+print("Hierarchical Clusters:\n", hc_clusters)
+print("DBSCAN Clusters:\n", dbscan_clusters)
+```
+
